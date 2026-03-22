@@ -1,0 +1,74 @@
+{
+  "entities": {
+    "Student": {
+      "title": "Student",
+      "description": "Information about a student",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "name": { "type": "string", "description": "Full name of the student" },
+        "rollNo": { "type": "string", "description": "Roll number or Enrollment number" },
+        "faceImage": { "type": "string", "description": "Base64 encoded reference face image" },
+        "onLeave": { "type": "boolean", "description": "Whether the student is on leave" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "rollNo"]
+    },
+    "AttendanceSession": {
+      "title": "Attendance Session",
+      "description": "A specific class session for which attendance is being taken",
+      "type": "object",
+      "properties": {
+        "className": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "qrToken": { "type": "string", "description": "Unique token for this session's QR code" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["className", "date", "qrToken"]
+    },
+    "AttendanceRecord": {
+      "title": "Attendance Record",
+      "description": "A record of a student's attendance for a session",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "rollNo": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId", "sessionId", "timestamp"]
+    },
+    "User": {
+      "title": "User Profile",
+      "description": "Information about a user's role and identity",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["teacher", "student"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "role"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection of user profiles"
+    },
+    "/students/{studentId}": {
+      "schema": "Student",
+      "description": "Collection of students"
+    },
+    "/sessions/{sessionId}": {
+      "schema": "AttendanceSession",
+      "description": "Collection of attendance sessions"
+    },
+    "/attendance/{recordId}": {
+      "schema": "AttendanceRecord",
+      "description": "Collection of attendance records"
+    }
+  }
+}

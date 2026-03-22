@@ -1,0 +1,121 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: students
+    // Document ID: auto-generated or studentId
+    // Fields:
+    //   - name: string (required)
+    //   - rollNo: string (required)
+    //   - faceImage: string (optional, base64)
+    //   - onLeave: bool (optional, default false)
+    //   - createdAt: timestamp
+    //
+    // Collection: sessions
+    // Document ID: auto-generated
+    // Fields:
+    //   - className: string (required)
+    //   - date: string (required, YYYY-MM-DD)
+    //   - qrToken: string (required)
+    //   - active: bool
+    //   - createdAt: timestamp
+    //
+    // Collection: attendance
+    // Document ID: auto-generated
+    // Fields:
+    //   - studentId: string (required)
+    //   - sessionId: string (required)
+    //   - studentName: string
+    //   - rollNo: string
+    //   - timestamp: timestamp (required)
+    //
+    // Collection: users
+    // Document ID: userId (uid)
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (optional)
+    //   - role: string (required, 'teacher' | 'student')
+    //   - createdAt: timestamp
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (
+          (request.auth.token.email == "tirthpatel1112005@gmail.com" && request.auth.token.email_verified == true) ||
+          (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher') // Teachers are admins in this app
+        );
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'role']) &&
+             data.uid == request.auth.uid &&
+             data.role in ['teacher', 'student'];
+    }
+
+    function isValidStudent(data) {
+      return data.keys().hasAll(['name', 'rollNo']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.rollNo is string && data.rollNo.size() > 0 && data.rollNo.size() < 50 &&
+             (!('uid' in data) || data.uid is string) &&
+             (!('onLeave' in data) || data.onLeave is bool);
+    }
+
+    function isValidSession(data) {
+      return data.keys().hasAll(['className', 'date', 'qrToken']) &&
+             data.className is string && data.className.size() > 0 &&
+             data.date is string &&
+             data.qrToken is string;
+    }
+
+    function isValidAttendance(data) {
+      return data.keys().hasAll(['studentId', 'sessionId', 'timestamp']) &&
+             data.studentId is string &&
+             data.sessionId is string &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && isOwner(userId);
+      allow update: if isAdmin() || (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    match /students/{studentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidStudent(request.resource.data) && (isAdmin() || request.resource.data.uid == request.auth.uid);
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid && isValidStudent(request.resource.data));
+      allow delete: if isAdmin();
+    }
+
+    match /sessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /attendance/{recordId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.studentId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidAttendance(request.resource.data) && request.resource.data.studentId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+  }
+}

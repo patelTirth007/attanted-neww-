@@ -1,0 +1,5 @@
+{
+  "name": "QR & Face AI Attendance System",
+  "description": "A full-stack college attendance system using QR codes and AI face recognition for secure verification.",
+  "requestFramePermissions": ["camera"]
+}
